@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: embrain_dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./infra/postgres/02-migrate.sql:/docker-entrypoint-initdb.d/02-migrate.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -51,8 +52,12 @@ services:
       DB_USER: embrain
       DB_PASS: embrain_dev
       JWT_SECRET: change_me_in_production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health || exit 1"]
@@ -98,16 +103,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Phase 1 placeholder: Next.js app will be scaffolded in Phase 2 ──────────
   frontend:
-    image: node:20-alpine
-    working_dir: /app
-    command: node -e "const h=require('http');h.createServer((_,r)=>{r.writeHead(200,{'Content-Type':'application/json'});r.end(JSON.stringify({status:'ok',service:'frontend'}))}).listen(3000,()=>console.log('Frontend placeholder on :3000'))"
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost/api/v1
     ports:
       - "3000:3000"
+    depends_on:
+      - gateway
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
-      interval: 10s
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 || exit 1"]
+      interval: 15s
       timeout: 5s
       retries: 5
 
