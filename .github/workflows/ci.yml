@@ -66,12 +66,9 @@ jobs:
         run: |
           echo "Waiting for containers to become healthy..."
           for i in $(seq 1 18); do
-            UNHEALTHY=$(docker compose ps --format json \
-              | python3 -c "
-import sys, json
-data = [json.loads(l) for l in sys.stdin if l.strip()]
-print(sum(1 for s in data if s.get('Health','') not in ('healthy', '')))
-")
+            UNHEALTHY=$(docker compose ps -q | xargs -r docker inspect \
+              --format '{{.State.Health.Status}}' \
+              | grep -c -v 'healthy' || true)
             echo "Attempt $i: $UNHEALTHY container(s) not yet healthy"
             if [ "$UNHEALTHY" -eq 0 ]; then
               echo "All containers healthy!"
