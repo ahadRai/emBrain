@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package embrain;
+
+// ── RAG Service ──────────────────────────────────────────
+service RagService {
+  rpc RetrieveContext (ContextRequest) returns (ContextResponse);
+}
+
+message ContextRequest {
+  string query        = 1;
+  string subject      = 2;
+  int32  top_k        = 3;
+}
+
+message ContextResponse {
+  repeated Chunk chunks = 1;
+}
+
+message Chunk {
+  string content    = 1;
+  string source     = 2;
+  float  score      = 3;
+}
+
+// ── ML Model ─────────────────────────────────────────────
+service ModelService {
+  rpc Generate (GenerateRequest) returns (GenerateResponse);
+}
+
+message GenerateRequest {
+  string prompt          = 1;
+  string subject         = 2;
+  string prompt_version  = 3;
+  repeated Message history = 4;
+}
+
+message Message {
+  string role    = 1;
+  string content = 2;
+}
+
+message GenerateResponse {
+  string answer          = 1;
+  string prompt_version  = 2;
+  int32  tokens_used     = 3;
+}
